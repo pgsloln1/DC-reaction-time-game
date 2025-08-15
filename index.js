@@ -186,14 +186,20 @@ app.post('/score', async (req, res) => {
     }
 
     db.prepare(`
-      INSERT INTO scores(channelId, userId, username, avgMs, bestMs, updatedAt)
-      VALUES(?, ?, ?, ?, ?, ?)
-      ON CONFLICT(channelId, userId) DO UPDATE SET
-        username=excluded.username,
-        avgMs=excluded.avgMs < scores.avgMs ? excluded.avgMs : scores.avgMs,
-        bestMs=excluded.bestMs < scores.bestMs ? excluded.bestMs : scores.bestMs,
-        updatedAt=excluded.updatedAt
-    `).run(channelId, userId, username, finalAvg, finalBest, Date.now());
+  INSERT INTO scores(channelId, userId, username, avgMs, bestMs, updatedAt)
+  VALUES(?, ?, ?, ?, ?, ?)
+  ON CONFLICT(channelId, userId) DO UPDATE SET
+    username = excluded.username,
+    avgMs = CASE
+              WHEN excluded.avgMs < scores.avgMs THEN excluded.avgMs
+              ELSE scores.avgMs
+            END,
+    bestMs = CASE
+               WHEN excluded.bestMs < scores.bestMs THEN excluded.bestMs
+               ELSE scores.bestMs
+             END,
+    updatedAt = excluded.updatedAt
+`).run(channelId, userId, username, finalAvg, finalBest, Date.now());
 
     // Update leaderboard message
     await postOrUpdateLeaderboard(channelId);
