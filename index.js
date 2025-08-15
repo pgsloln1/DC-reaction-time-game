@@ -5,6 +5,7 @@ import { customAlphabet } from 'nanoid';
 import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,32 +96,68 @@ setInterval(cleanTokens, 60 * 1000);
 const app = express();
 app.use(express.json());
 
-// Find a valid public directory
+// pomôcka na výpis adresára
+function ls(dir) {
+  try { return fs.readdirSync(dir, { withFileTypes: true })
+      .map(d => (d.isDirectory() ? `[D]` : `[F]`) + ' ' + d.name)
+      .join('\n'); }
+  catch { return '(neexistuje)'; }
+}
+
+// kandidáti na public/
 const candidates = [
   path.join(__dirname, 'public'),
   path.join(process.cwd(), 'public'),
 ];
 
+// nájdi public/index.html
 let publicDir = null;
 for (const p of candidates) {
-  try {
-    if (fs.existsSync(path.join(p, 'index.html'))) {
-      publicDir = p;
-      break;
-    }
-  } catch {}
+  if (fs.existsSync(path.join(p, 'index.html'))) { publicDir = p; break; }
 }
 
-if (!publicDir) {
-  console.error('❌ Could not find public/index.html. Tried:', candidates);
-} else {
+console.log('cwd =', process.cwd());
+console.log('__dirname =', __dirname);
+console.log('ls(__dirname)=\n' + ls(__dirname));
+console.log('ls(__dirname/public)=\n' + ls(path.join(__dirname, 'public')));
+console.log('ls(cwd/public)=\n' + ls(path.join(process.cwd(), 'public')));
+
+if (publicDir) {
   console.log('✅ Serving static from:', publicDir);
   app.use(express.static(publicDir, { index: 'index.html', extensions: ['html'] }));
   app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+} else {
+  console.error('❌ public/index.html not found. Tried:', candidates);
+
+  // Fallback: ak existuje root index.html, pošli aspoň ten
+  const rootIndex = path.join(__dirname, 'index.html');
+  app.get('/', (req, res) => {
+    if (fs.existsSync(rootIndex)) {
+      return res.sendFile(rootIndex);
+    }
+    res.status(500).send('Missing public/index.html and root index.html');
+  });
 }
+
 // health
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
+// dočasná diagnostika – ukáže strom
+app.get('/__diag', (req, res) => {
+  res.type('text/plain').send([
+    'cwd = ' + process.cwd(),
+    '__dirname = ' + __dirname,
+    '',
+    '== ls(__dirname) ==',
+    ls(__dirname),
+    '',
+    '== ls(__dirname/public) ==',
+    ls(path.join(__dirname, 'public')),
+    '',
+    '== ls(cwd/public) ==',
+    ls(path.join(process.cwd(), 'public')),
+  ].join('\n'));
+});
 // Accept score
 app.post('/score', async (req, res) => {
   try {
