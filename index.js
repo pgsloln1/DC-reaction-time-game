@@ -94,12 +94,30 @@ setInterval(cleanTokens, 60 * 1000);
 // --- Express app ---
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// Find a valid public directory
+const candidates = [
+  path.join(__dirname, 'public'),
+  path.join(process.cwd(), 'public'),
+];
 
+let publicDir = null;
+for (const p of candidates) {
+  try {
+    if (fs.existsSync(path.join(p, 'index.html'))) {
+      publicDir = p;
+      break;
+    }
+  } catch {}
+}
+
+if (!publicDir) {
+  console.error('❌ Could not find public/index.html. Tried:', candidates);
+} else {
+  console.log('✅ Serving static from:', publicDir);
+  app.use(express.static(publicDir, { index: 'index.html', extensions: ['html'] }));
+  app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+}
 // health
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
