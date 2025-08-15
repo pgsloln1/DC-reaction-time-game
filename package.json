@@ -1,0 +1,21 @@
+{
+  "name": "discord-reaction-game-bot",
+  "version": "1.0.0",
+  "description": "Discord bot that serves a reaction-time mini-game and maintains a per-channel leaderboard.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.5",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "nanoid": "^4.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
